@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulnBank External Web App Pentest Report — oluwatamilore kupoluyi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">oluwatamilore<span class="caret">_</span></a>
+    <div class="topbar-links">
+      <a href="index.html#work">work</a>
+      <a href="index.html#about">about</a>
+      <a href="mailto:you@example.com">contact</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="report-header">
+    <a class="breadcrumb" href="index.html#work">← back to case files</a>
+    <div class="report-meta-row">
+      <span class="tag tag-critical">Offensive Security</span>
+      <span class="tag tag-info">CF-01</span>
+    </div>
+    <h1>VulnBank — External Web App Penetration Testing Report</h1>
+    <p style="color: var(--text-muted); max-width: 58ch; margin:0;">
+      A black-box security assessment of VulnBank's external web application, testing authentication, authorization, and API security controls. Scope was limited to the web application layer — network and mobile were not tested in this engagement.
+    </p>
+  </div>
+
+  <div class="report-body">
+
+    <h2>Executive Summary</h2>
+    <p>
+      This assessment identified 15 vulnerabilities in VulnBank's web application, including 7 rated Critical. Overall risk is rated <strong style="color: var(--text);">Critical</strong>: an attacker could bypass login entirely via SQL injection, view or modify any other user's financial data through broken authorization, and self-grant admin privileges during account registration — three independent paths to full account or system compromise, any one of which is sufficient on its own.
+    </p>
+    <p>
+      The application also failed to isolate its cloud environment from user input: a server-side request forgery flaw let an external request reach AWS's internal metadata endpoint, a class of bug that has led to major real-world breaches when left unpatched.
+    </p>
+
+    <div class="metric-row">
+      <div class="metric"><div class="val">7</div><div class="lbl">Critical findings</div></div>
+      <div class="metric"><div class="val">3</div><div class="lbl">High findings</div></div>
+      <div class="metric"><div class="val">5</div><div class="lbl">Medium findings</div></div>
+      <div class="metric"><div class="val">0</div><div class="lbl">Low findings</div></div>
+    </div>
+
+    <h2>Methodology</h2>
+    <p>
+      Scope was limited to VulnBank's external web application — authentication, transaction, registration, and profile-management endpoints. Network infrastructure and the mobile application were explicitly out of scope for this engagement.
+    </p>
+    <p>
+      Testing followed a black-box approach: mapping the application's attack surface with two independently authenticated test accounts, then manually probing authentication, authorization, and business-logic flows. <code>Burp Suite</code> (Repeater and Intruder) was used for request interception, payload injection, and automated brute-force testing; <code>jwt.io</code> was used to decode and inspect session tokens for sensitive data exposure.
+    </p>
+
+    <h2>Findings</h2>
+    <p style="color: var(--text-muted); font-size: 14.5px; margin-top: -6px;">
+      The 6 findings below represent the most distinct vulnerability classes identified. The remaining 9 are summarized in the table further down.
+    </p>
+
+    <div class="jump-nav">
+      <a href="#f-sqli">SQL Injection</a>
+      <a href="#f-bola">BOLA</a>
+      <a href="#f-ssrf">SSRF</a>
+      <a href="#f-mass">Mass Assignment</a>
+      <a href="#f-bfla">BFLA</a>
+      <a href="#f-jwt">JWT Exposure</a>
+      <a href="#summary-table">Other findings ↓</a>
+    </div>
+
+    <div class="finding" id="f-sqli">
+      <div class="finding-title">
+        <span class="tag tag-critical">Critical</span>
+        <h3>SQL Injection via Login Endpoint</h3>
+      </div>
+      <dl>
+        <dt>Description</dt><dd>The login form at <code>POST /login</code> passes user input unsanitized into the backend database query, allowing SQL syntax to alter query logic.</dd>
+        <dt>Evidence</dt><dd>Submitting the payload <code>' OR 1=1--</code> in the username field returned an unexpected dataset instead of an authentication error, confirming the input reaches the query unescaped and exposing the underlying query structure.</dd>
+        <dt>Impact</dt><dd>An attacker can bypass authentication entirely, and depending on database permissions, read, modify, or delete records — potentially gaining full control of the backend.</dd>
+        <dt>Remediation</dt><dd>Replace dynamically constructed queries with parameterized queries or prepared statements; validate input type, format, and length server-side; deploy a WAF as a secondary control.</dd>
+      </dl>
+    </div>
+
+    <div class="finding" id="f-bola">
+      <div class="finding-title">
+        <span class="tag tag-critical">Critical</span>
+        <h3>Unauthorized Access to Other Users' Data (BOLA)</h3>
+      </div>
+      <dl>
+        <dt>Description</dt><dd>The transaction history endpoint does not verify that the requesting user owns the account they're querying.</dd>
+        <dt>Evidence</dt><dd>With two authenticated test accounts, submitting the second account's number on <code>GET /transactions/{account_number}</code> returned that user's full transaction history under the first user's session. Swapping JWTs between accounts produced the same result.</dd>
+        <dt>Impact</dt><dd>Any authenticated user can view — and potentially modify or delete — the financial data of any other user in the system.</dd>
+        <dt>Remediation</dt><dd>Add server-side authorization checks confirming the authenticated user's identity matches the requested resource before returning any data; deny mismatched requests outright.</dd>
+      </dl>
+    </div>
+
+    <div class="finding" id="f-ssrf">
+      <div class="finding-title">
+        <span class="tag tag-critical">Critical</span>
+        <h3>Server-Side Request Forgery via User-Supplied URL</h3>
+      </div>
+      <dl>
+        <dt>Description</dt><dd>The profile-picture-by-URL feature fetches whatever URL a user submits, without restricting the destination.</dd>
+        <dt>Evidence</dt><dd>Submitting <code>http://169.254.169.254/</code> — AWS's internal instance metadata address — as the image URL on <code>POST /upload_profile_picture_url</code> caused the server to fetch it and return the metadata content directly in the response.</dd>
+        <dt>Impact</dt><dd>An attacker can pivot through the server to reach internal services and cloud metadata, potentially exfiltrating credentials and infrastructure configuration.</dd>
+        <dt>Remediation</dt><dd>Validate and allowlist permitted destination domains; explicitly block internal/private IP ranges (169.254.x.x, 10.x.x.x, 172.16–31.x.x, 192.168.x.x); route outbound fetches through a restrictive proxy.</dd>
+      </dl>
+    </div>
+
+    <div class="finding" id="f-mass">
+      <div class="finding-title">
+        <span class="tag tag-critical">Critical</span>
+        <h3>Role Escalation via Mass Assignment (BOPLA)</h3>
+      </div>
+      <dl>
+        <dt>Description</dt><dd>The registration endpoint accepts and processes fields beyond the intended input schema, including privilege-related fields.</dd>
+        <dt>Evidence</dt><dd>Adding <code>"is_admin": true</code> to the request body on <code>POST /register</code> caused the server to create the account with full administrative privileges.</dd>
+        <dt>Impact</dt><dd>Any unauthenticated user can self-grant admin access at signup, with no exploitation steps beyond submitting one extra field.</dd>
+        <dt>Remediation</dt><dd>Allowlist only expected fields on registration; assign roles exclusively server-side; reject requests containing unauthorized fields rather than silently ignoring them.</dd>
+      </dl>
+    </div>
+
+    <div class="finding" id="f-bfla">
+      <div class="finding-title">
+        <span class="tag tag-critical">Critical</span>
+        <h3>Privilege Escalation via Broken Function Level Authorization</h3>
+      </div>
+      <dl>
+        <dt>Description</dt><dd>An administrative endpoint is reachable by any authenticated user, regardless of role.</dd>
+        <dt>Evidence</dt><dd>A standard test account was able to directly access <code>/sup3r_s3cr3t_admin</code> and reach admin functionality — the endpoint's obscurity was its only protection, not an actual authorization check.</dd>
+        <dt>Impact</dt><dd>Any authenticated user can reach administrative functions, risking confidentiality, integrity, and availability of the entire application.</dd>
+        <dt>Remediation</dt><dd>Enforce server-side role checks on every administrative route; never rely on hard-to-guess URLs as an access control mechanism; apply centralized role-based access control (RBAC).</dd>
+      </dl>
+    </div>
+
+    <div class="finding sev-medium" id="f-jwt">
+      <div class="finding-title">
+        <span class="tag tag-medium">Medium</span>
+        <h3>JWT Token Exposes Sensitive Data</h3>
+      </div>
+      <dl>
+        <dt>Description</dt><dd>The session token issued at login carries sensitive data in its payload rather than referencing it server-side.</dd>
+        <dt>Evidence</dt><dd>Decoding the JWT captured from <code>GET /dashboard</code> at jwt.io revealed passwords, internal user IDs, and role data stored in plaintext within the token itself.</dd>
+        <dt>Impact</dt><dd>Anyone who intercepts a token can extract credentials and role data directly, without needing to break any encryption — a direct path to account takeover and privilege escalation.</dd>
+        <dt>Remediation</dt><dd>Never place sensitive data in JWT payloads; use opaque tokens or encrypted claims where needed; enforce secure key management and rotation for token signing.</dd>
+      </dl>
+    </div>
+
+    <h2 id="summary-table">Other Findings</h2>
+    <p style="color: var(--text-muted); font-size: 14.5px;">
+      9 additional findings from the same assessment, summarized below.
+    </p>
+    <table class="findings-table">
+      <thead>
+        <tr><th>Finding</th><th>Severity</th><th>Impact, in short</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Password Reset Abuse</td>
+          <td class="sev-cell"><span class="tag tag-critical">Critical</span></td>
+          <td>No rate limit on password reset — 10-15 rapid requests all succeeded, enabling inbox flooding and OTP-guessing attacks.</td>
+        </tr>
+        <tr>
+          <td>CORS Allows Arbitrary Origins</td>
+          <td class="sev-cell"><span class="tag tag-critical">Critical</span></td>
+          <td>API reflects and permits arbitrary origins, letting a malicious site make authenticated requests on a logged-in user's behalf.</td>
+        </tr>
+        <tr>
+          <td>No Account Lockout on Login</td>
+          <td class="sev-cell"><span class="tag tag-high">High</span></td>
+          <td>31 failed login attempts via Burp Intruder, no lockout or HTTP 429 at any point — unlimited brute-force is possible.</td>
+        </tr>
+        <tr>
+          <td>No Rate Limiting on Auth Endpoints</td>
+          <td class="sev-cell"><span class="tag tag-high">High</span></td>
+          <td>Login and password reset both accept unlimited requests, enabling brute-force and credential stuffing.</td>
+        </tr>
+        <tr>
+          <td>Deprecated API Version Still Active</td>
+          <td class="sev-cell"><span class="tag tag-high">High</span></td>
+          <td>Downgrading a request from <code>/api/v3/</code> to <code>/api/v1/</code> reaches a live legacy endpoint returning excess data.</td>
+        </tr>
+        <tr>
+          <td>Username Enumeration via Error Messages</td>
+          <td class="sev-cell"><span class="tag tag-medium">Medium</span></td>
+          <td>Distinct error messages for invalid usernames vs. wrong passwords let attackers build a list of valid accounts.</td>
+        </tr>
+        <tr>
+          <td>Missing Input Validation on Transaction Lookup</td>
+          <td class="sev-cell"><span class="tag tag-medium">Medium</span></td>
+          <td>Malformed account numbers return HTTP 200 with an empty list instead of a proper error, aiding enumeration.</td>
+        </tr>
+        <tr>
+          <td>Weak Password Policy</td>
+          <td class="sev-cell"><span class="tag tag-medium">Medium</span></td>
+          <td>No complexity or length requirements — passwords like "123" are accepted on registration and reset.</td>
+        </tr>
+        <tr>
+          <td>Missing HTTP Security Headers</td>
+          <td class="sev-cell"><span class="tag tag-medium">Medium</span></td>
+          <td>No CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, or Permissions-Policy on any tested response.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Conclusion</h2>
+    <p>
+      VulnBank's current posture is Critical: three independent, low-effort paths (SQL injection, mass assignment, and BOLA) each lead to full compromise on their own, and the SSRF finding adds cloud infrastructure exposure on top. Fixing the 7 Critical findings — starting with input validation on the login and registration flows, and authorization checks on every object- and function-level request — would close off the most severe attack paths. The High and Medium findings compound risk (e.g. no account lockout makes the SQLi and enumeration findings easier to exploit at scale) and should be remediated as a second pass once the Criticals are resolved.
+    </p>
+
+    <div class="callout">
+      <strong>Note:</strong> VulnBank is a deliberately vulnerable application built for security training. All testing was performed in an isolated lab environment with no real user data involved.
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div class="wrap" style="display:flex; justify-content:space-between; width:100%; flex-wrap:wrap; gap:12px;">
+    <a href="index.html">← oluwatamilore</a>
+    <span>Case file CF-01</span>
+  </div>
+</footer>
+
+<script src="background.js"></script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>oluwatamilore kupoluyi — Cybersecurity Portfolio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#top">oluwatamilore<span class="caret">_</span></a>
+    <div class="topbar-links">
+      <a href="#work">work</a>
+      <a href="#about">about</a>
+      <a href="mailto:tamilorekupoluyi@gmail.com">contact</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="top">
+
+  <section class="hero">
+    <div class="terminal">
+      <div class="terminal-titlebar">
+        <span class="dot dot-critical"></span>
+        <span class="dot dot-medium"></span>
+        <span class="dot dot-info"></span>
+        <span style="margin-left:6px;">whoami.sh</span>
+      </div>
+      <div class="terminal-body">
+        <div><span class="term-prompt">$</span> <span class="term-line">whoami</span></div>
+        <div class="term-output" id="typed-name">oluwatamilore kupoluyi</div>
+        <div style="margin-top:14px;"><span class="term-prompt">$</span> <span class="term-line">cat focus.txt</span></div>
+        <div class="term-output">VAPT &amp; API security</div>
+        <div style="margin-top:14px;"><span class="term-prompt">$</span> <span class="term-line">status --current</span> <span class="cursor"></span></div>
+      </div>
+    </div>
+
+    <h1>Security work, written up like it's meant to be reviewed.</h1>
+    <p class="tagline">A running case log — offensive security, detection engineering, applied builds — each entry documented the way a real finding gets reported: what was tested, what was found, what it means.</p>
+
+    <div class="status-pill">
+      <span class="pulse"></span>
+      Actively building — new case files added regularly
+    </div>
+  </section>
+
+  <section id="work">
+    <div class="section-label" id="work-label">Case files</div>
+
+    <a class="entry entry-critical" href="vulnbank.html">
+      <div class="entry-head">
+        <span class="tag tag-critical">Offensive Security</span>
+        <span class="entry-id">CF-01</span>
+      </div>
+      <h3>VulnBank — External Web App Pentest Report</h3>
+      <p>Black-box assessment of a deliberately vulnerable banking web application. 15 findings, including SQL injection, broken access control, and SSRF into cloud metadata — each with evidence, impact, and remediation.</p>
+      <div class="entry-meta">
+        <span>Scope: Web app</span>
+        <span>Findings: 7 critical / 15 total</span>
+      </div>
+      <span class="entry-cta">Read full report <span class="arrow">→</span></span>
+    </a>
+
+    <a class="entry entry-info" href="phishing-detection.html">
+      <div class="entry-head">
+        <span class="tag tag-info">ML / Detection</span>
+        <span class="entry-id">CF-02</span>
+      </div>
+      <h3>AI/ML Phishing Detection System</h3>
+      <p>A classifier trained to flag phishing emails and sites in real time — including where it succeeds, where it fails, and why.</p>
+      <div class="entry-meta">
+        <span>Accuracy: 93.9%</span>
+        <span>False positive rate: 4.6%</span>
+      </div>
+      <span class="entry-cta">Read full writeup <span class="arrow">→</span></span>
+    </a>
+
+    <a class="entry entry-medium" href="browser-history-extension.html">
+      <div class="entry-head">
+        <span class="tag tag-medium">Applied Engineering</span>
+        <span class="entry-id">CF-03</span>
+      </div>
+      <h3>Browsing History Summarizer — Chrome Extension</h3>
+      <p>A shipped Chrome extension that summarizes browsing activity, reviewed here for permission scope and how sensitive data is handled.</p>
+      <div class="entry-meta">
+        <span>Storage: Local only</span>
+        <span>Permissions: history, storage</span>
+      </div>
+      <span class="entry-cta">Read full writeup <span class="arrow">→</span></span>
+    </a>
+  </section>
+
+  <section id="about">
+    <div class="section-label">About</div>
+    <p style="color: var(--text-muted); max-width: 58ch;">
+      Computer Science undergraduate at Covenant University, focused on Vulnerability Assessment &amp; Penetration Testing (VAPT) and API security. Currently interning at Digital Encode, running web/API security testing, vulnerability assessments, and internal network assessments — and writing the reports that go with them. Ranked in TryHackMe's top 1%.
+    </p>
+    <div class="skills-grid">
+      <div class="skill-chip"><span class="k">Web / API Testing</span>Burp Suite, Postman</div>
+      <div class="skill-chip"><span class="k">Recon / Scanning</span>Nmap, Nikto</div>
+      <div class="skill-chip"><span class="k">Network</span>Wireshark</div>
+      <div class="skill-chip"><span class="k">Currently</span>Security Intern @ Digital Encode</div>
+      <div class="skill-chip"><span class="k">TryHackMe</span>Top 1% ranked</div>
+      <div class="skill-chip"><span class="k">Focus</span>VAPT &amp; API Security</div>
+    </div>
+
+    <div class="section-label" style="margin-top: 36px;">Certifications</div>
+    <div class="skills-grid">
+      <div class="skill-chip"><span class="k">TryHackMe · Apr 2026</span>Security Engineer Certificate</div>
+      <div class="skill-chip"><span class="k">TryHackMe · Sep 2025</span>Jr Penetration Tester Certificate</div>
+      <div class="skill-chip"><span class="k">APIsec University · Jun 2026</span>API Security Fundamentals '25</div>
+      <div class="skill-chip"><span class="k">Google · May 2026</span>Foundations of Cybersecurity</div>
+      <div class="skill-chip"><span class="k">NVIDIA · May 2026</span>Introduction to Networking</div>
+    </div>
+    <p style="margin-top: 14px;">
+      <a href="https://www.linkedin.com/in/oluwatamilorekupoluyi/" target="_blank" rel="noopener" style="font-family: var(--font-mono); font-size: 12.5px; color: var(--info); text-decoration: none;">View full certification history on LinkedIn →</a>
+    </p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap" style="display:flex; justify-content:space-between; width:100%; flex-wrap:wrap; gap:12px;">
+    <span>Last updated Aug 2026</span>
+    <span>
+      <a href="#" target="_blank" rel="noopener">github</a> ·
+      <a href="https://www.linkedin.com/in/oluwatamilorekupoluyi/" target="_blank" rel="noopener">linkedin</a> ·
+      <a href="mailto:tamilorekupoluyi@gmail.com">email</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+  // Blinking cursor already handled in CSS; this just respects reduced-motion
+  // by leaving the terminal static if the user prefers it (CSS handles the rest).
+</script>
+
+<script>
+  // Case file count auto-updates from however many .entry cards exist —
+  // add or remove project entries freely without touching this number.
+  (function () {
+    var label = document.getElementById("work-label");
+    var count = document.querySelectorAll("#work .entry").length;
+    if (label) {
+      label.textContent = "Case files — " + String(count).padStart(2, "0");
+    }
+  })();
+</script>
+<script src="background.js"></script>
+</body>
+</html>

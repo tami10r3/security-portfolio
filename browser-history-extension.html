@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>History Digest — Browser Extension — oluwatamilore kupoluyi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">oluwatamilore<span class="caret">_</span></a>
+    <div class="topbar-links">
+      <a href="index.html#work">work</a>
+      <a href="index.html#about">about</a>
+      <a href="mailto:you@example.com">contact</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="report-header">
+    <a class="breadcrumb" href="index.html#work">← back to case files</a>
+    <div class="report-meta-row">
+      <span class="tag tag-info">Browser Extension</span>
+      <span class="tag tag-info">CF-03</span>
+    </div>
+    <h1>History Digest</h1>
+    <p style="color: var(--text-muted); max-width: 58ch; margin:0;">
+      A Manifest V3 Chrome extension that turns your browsing history into an AI-generated activity summary — built for logbook-style reporting, with a Q&amp;A mode and PDF export.
+    </p>
+  </div>
+
+  <div class="report-body">
+
+    <h2>Overview</h2>
+    <p>
+      History Digest reads your Chrome browsing history over a selected window — 24 hours, 3 days, 7 days, or 30 days — and sends a summarized version of it to Claude to generate a short written digest of what you've been doing, plus a set of topic tags. It also supports free-form follow-up questions against that history ("what did I look into on Tuesday?") and can export the whole session — summary, stats, and Q&amp;A transcript — as a formatted PDF. It was originally shaped around SIWES logbook reporting, but works as a general browsing-activity summarizer for anyone who wants a quick recap of their week online.
+    </p>
+
+    <h2>Features</h2>
+    <ul style="color: var(--text-muted); line-height: 1.9;">
+      <li>Selectable time range: 24 hours, 3 days, 7 days, or 30 days</li>
+      <li>AI-generated summary of browsing activity, written by Claude from processed history data</li>
+      <li>Auto-extracted topic tags for the period</li>
+      <li>At-a-glance stats: total visits, unique sites, top domain</li>
+      <li>Follow-up Q&amp;A against the day-by-day history for that session</li>
+      <li>One-click PDF export with charts, a stats summary, and the full Q&amp;A transcript</li>
+    </ul>
+
+    <h2>How It Works</h2>
+    <p>
+      On <strong>Analyse</strong>, the extension calls <code>chrome.history.search()</code> for up to 2,000 entries within the selected window, then reduces that down to the top 30 most-visited domains (by count) and the 40 most recent page titles. That reduced list — domains and titles only, no full links — is sent to Claude (<code>claude-sonnet-4-6</code>) with a prompt asking for a short professional summary plus 4–6 topic tags, formatted as structured output the extension can parse reliably.
+    </p>
+    <p>
+      The <strong>Q&amp;A box</strong> works differently and more thoroughly: it sends the full day-grouped history — including complete URLs and titles — for that period, so Claude can answer specific questions that a domain-only summary couldn't (e.g. "which article did I read about X?"). This is a deliberate tradeoff for that one feature, not an oversight — more detail in, more useful answers out — but it does mean Q&amp;A is more data-hungry than the main summary. See <a href="#privacy" style="color: var(--accent-teal);">Privacy &amp; Data Handling</a> below.
+    </p>
+    <p>
+      PDF export runs entirely client-side using jsPDF, with a custom markdown-to-PDF renderer built to handle the structured output Claude returns — tables, headings, bullet lists, and stat cards are drawn directly rather than dumped as plain text.
+    </p>
+
+    <h2>Permissions &amp; Architecture</h2>
+    <div class="callout">
+      <strong>Manifest V3, minimal permission surface</strong>
+      <p style="margin: 8px 0 0;">
+        The extension requests exactly two permissions — <code>history</code> and <code>storage</code> — plus a single host permission scoped to <code>https://api.anthropic.com/</code>. No <code>tabs</code>, no <code>activeTab</code>, no broad host access, no cookie access. It can read your browsing history and make one outbound network call, and nothing else.
+      </p>
+    </div>
+    <p>
+      There's no backend server. The extension calls the Anthropic API directly from the browser using a user-supplied API key, which is stored in <code>chrome.storage.local</code> — device-local, not synced, not sent anywhere except as an auth header on requests to Anthropic. Going server-direct like this removes a middle party that could see your data or key, but it also means the key lives in browser storage rather than a managed server-side vault — a reasonable tradeoff for a personal-use tool, less so if this were ever shipped to other users at scale.
+    </p>
+
+    <h2 id="privacy">Privacy &amp; Data Handling</h2>
+    <p>
+      Most of what the extension does works from domain names and page titles, not full links: the main Analyse summary only ever sends a domain-and-title list to Claude, never a raw URL. The Q&amp;A feature is the exception — to answer a specific question about your browsing, it sends full URLs and titles for that day, since a domain list alone isn't enough detail to answer "what was that article again?" So the accurate statement is: <strong>your raw browsing data stays on your device unless a feature specifically needs more detail to do its job</strong> — the Analyse summary never needs it and never gets it; the Q&amp;A feature does, by design. No analytics, no third-party tracking, no data collection beyond what's sent to Claude to generate a response.
+    </p>
+
+    <h2>Limitations &amp; Next Steps</h2>
+    <p style="color: var(--text-muted);">
+      The clearest next step is closing the gap between the two features: the Q&amp;A path could be redesigned to work from a redacted or domain-level view of history by default, falling back to full detail only when a question genuinely requires it, rather than sending the full day's URLs on every query. Beyond that: a lightweight backend so the API key isn't held in browser storage at all, a way to exclude specific sites or domains from analysis entirely, and handling for very high-volume history (the current 2,000-item cap on <code>chrome.history.search()</code> means a genuinely heavy browsing day could get truncated before it reaches the summarizer).
+    </p>
+
+  </div>
+</div>
+
+<footer>
+  <div class="wrap" style="display:flex; justify-content:space-between; width:100%; flex-wrap:wrap; gap:12px;">
+    <a href="index.html">← oluwatamilore</a>
+    <span>Case file CF-03</span>
+  </div>
+</footer>
+
+<script src="background.js"></script>
+</body>
+</html>

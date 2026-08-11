@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI/ML Phishing Detection System — oluwatamilore kupoluyi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">oluwatamilore<span class="caret">_</span></a>
+    <div class="topbar-links">
+      <a href="index.html#work">work</a>
+      <a href="index.html#about">about</a>
+      <a href="mailto:you@example.com">contact</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="report-header">
+    <a class="breadcrumb" href="index.html#work">← back to case files</a>
+    <div class="report-meta-row">
+      <span class="tag tag-info">ML / Detection</span>
+      <span class="tag tag-info">CF-02</span>
+    </div>
+    <h1>AI/ML Phishing Detection System</h1>
+    <p style="color: var(--text-muted); max-width: 58ch; margin:0;">
+      A hybrid URL-risk engine — a Random Forest classifier combined with rule-based signals — trained on 446,176 labeled URLs and evaluated on a held-out test set, including the cases it got wrong.
+    </p>
+  </div>
+
+  <div class="report-body">
+
+    <h2>Overview</h2>
+    <p>
+      Most phishing links look wrong before you even load the page — a mismatched domain, a suspicious TLD, an unfamiliar structure. This project tests whether that intuition can be captured in a lightweight, fast, URL-only classifier: no page content, no network calls at request time, just the URL string itself. It's built as a full Flask application, not just a notebook — a scan endpoint, a login-gated admin dashboard, request history logging with live analytics, and CSV/PDF export of past scans.
+    </p>
+
+    <h2>Approach</h2>
+    <h3>Features</h3>
+    <p>
+      Each URL is reduced to 13 hand-engineered features before it ever reaches the model:
+    </p>
+    <ul style="color: var(--text-muted); line-height: 1.9;">
+      <li>URL length, dot count, slash count, hyphen count</li>
+      <li>Presence of an <code>@</code> symbol</li>
+      <li>Protocol used — HTTPS, HTTP, or none at all</li>
+      <li>Raw IP address in place of a domain name</li>
+      <li>Match against a whitelist of 22 commonly trusted domains</li>
+      <li>Subdomain depth</li>
+      <li>Match against a list of 15 TLDs disproportionately used for phishing (<code>.xyz</code>, <code>.tk</code>, <code>.click</code>, etc.)</li>
+      <li>A keyword-pressure score — count of terms like "login," "verify," "secure," and "bank" appearing in the URL</li>
+    </ul>
+
+    <h3>Model</h3>
+    <p>
+      A <strong>Random Forest classifier</strong> (150 trees, scikit-learn defaults otherwise) predicts a phishing probability from those 13 features. Random Forest was chosen over a single decision tree or logistic regression because URL-based signals interact non-linearly — a hyphen alone means nothing, a hyphen plus a suspicious TLD plus a missing HTTPS means a lot — and an ensemble of trees handles those interactions without needing them hand-specified.
+    </p>
+    <p>
+      Critically, the model's output isn't used directly as the final verdict. It feeds into a hybrid scoring formula:
+    </p>
+    <div class="callout">
+      <code style="font-family: var(--font-mono); font-size: 13px;">
+        risk_score = 0.6 × (model probability × 100) + 25 × (IP-in-URL flag) + 10 × (keyword pressure)
+      </code>
+      <p style="margin: 8px 0 0; font-size: 14px;">
+        capped at 100, labeled <strong>PHISHING</strong> above a score of 50.
+      </p>
+    </div>
+    <p>
+      The reasoning: a raw ML score can be wrong with total confidence. Blending in two hard, auditable rule-based signals — a raw IP address standing in for a domain, and keyword pressure — means an obviously suspicious URL can't be waved through purely because the model's training data didn't cover it. A WHOIS domain-age lookup was scoped in as a fourth signal but deliberately left out of this version for latency and reliability — it's noted in the code as a safe future addition, not an oversight.
+    </p>
+
+    <h2>Results</h2>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 4px;">
+      Trained and evaluated on a balanced dataset of 446,176 labeled URLs (50% phishing / malicious, 50% legitimate), 80/20 train/test split.
+    </p>
+    <div class="metric-row">
+      <div class="metric"><div class="val">93.9%</div><div class="lbl">Accuracy</div></div>
+      <div class="metric"><div class="val">95.3%</div><div class="lbl">Precision</div></div>
+      <div class="metric"><div class="val">92.4%</div><div class="lbl">Recall</div></div>
+      <div class="metric"><div class="val">4.6%</div><div class="lbl">False positive rate</div></div>
+    </div>
+    <p style="font-family: var(--font-mono); font-size: 12.5px; color: var(--text-dim);">
+      ROC-AUC 0.982. Numbers reported on a held-out test set (89,236 URLs), not training data.
+    </p>
+
+    <h3 style="margin-top: 28px;">What the model actually leans on</h3>
+    <p style="color: var(--text-muted);">
+      Feature importance turned up something worth being upfront about: the model relies almost entirely on <strong>structural URL shape</strong> — whether a protocol is present, slash count, HTTP vs HTTPS, dot count, and URL length together account for over 85% of its decision weight. The two features that sound the most "clever" — trusted-domain whitelist match and suspicious-TLD match — barely move the needle (under 1% combined). The model learned that how a URL is put together predicts risk better than any specific list of good or bad domains.
+    </p>
+
+    <h2>Case Study: What It Caught</h2>
+    <div class="callout">
+      <strong>https://secure.runescape.rs-rr.xyz/pages/runescape/auth.php?id=748578</strong>
+      <p style="margin: 8px 0 0;">
+        Flagged with a phishing probability of 1.0. This is a textbook lookalike: it borrows "runescape" in the subdomain to look legitimate at a glance, but the actual registered domain is <code>rs-rr.xyz</code> — a suspicious TLD, sitting behind a keyword ("secure") and an auth-flow path designed to look like a login page. Every signal pointed the same direction, and the model caught it with full confidence.
+      </p>
+    </div>
+
+    <h2>Case Study: What It Missed</h2>
+    <div class="callout" style="border-color: rgba(240,136,62,0.4);">
+      <strong>https://baprov-visahome.com/aditionalinfo.php?accountid=...</strong>
+      <p style="margin: 8px 0 0;">
+        Scored 0.38 — below the 0.5 threshold, so it was let through. This is a credential-harvesting page, but structurally it looks clean: valid HTTPS, a plausible-sounding (if slightly odd) domain, no IP address, no flagged TLD, low subdomain depth. The only tell is a misspelled path (<code>aditionalinfo.php</code>) and an <code>accountid</code> parameter — neither of which the current 13 features capture. This is the model's real limitation: it evaluates URL <em>shape</em>, not URL <em>meaning</em>, so a well-registered domain with a boring structure can carry a scam page straight past it.
+      </p>
+    </div>
+
+    <h2>Limitations &amp; Next Steps</h2>
+    <p>
+      Two limitations are worth naming directly rather than glossing over. First, the case above: features derived purely from URL structure miss semantically deceptive but structurally clean phishing pages — closing that gap would mean adding page-content or domain-age signals (the WHOIS lookup mentioned above is the natural next step), not just more URL features. Second, working through the false negatives surfaced label noise in the training data itself — a portion of "phishing" negatives the model missed turned out to be ordinary sites (established institutional and corporate domains) mislabeled in the source dataset, not real detection failures. That's a dataset quality issue rather than a model issue, but it means the true real-world false-negative rate is likely somewhat better than the reported 7.6% suggests, and it's a reminder to audit training labels before trusting metrics at face value.
+    </p>
+    <p style="color: var(--text-muted); margin-top: 10px;">
+      Beyond that: adversarial testing against newly registered or intentionally obfuscated domains, a retraining cadence as phishing tactics shift, and a human-review queue for borderline scores (35–65) rather than a hard 50-point cutoff.
+    </p>
+
+  </div>
+</div>
+
+<footer>
+  <div class="wrap" style="display:flex; justify-content:space-between; width:100%; flex-wrap:wrap; gap:12px;">
+    <a href="index.html">← oluwatamilore</a>
+    <span>Case file CF-02</span>
+  </div>
+</footer>
+
+<script src="background.js"></script>
+</body>
+</html>
