@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Security Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+    padding:30px;
+}
+
+.card{
+    background:#111827;
+    padding:20px;
+    border-radius:10px;
+    margin-bottom:20px;
+}
+
+button{
+    padding:10px 15px;
+    margin-right:10px;
+    border:none;
+    border-radius:6px;
+    background:#2563eb;
+    color:white;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#1d4ed8;
+}
+
+.history-item{
+    background:#1f2937;
+    padding:15px;
+    border-radius:8px;
+    margin-bottom:10px;
+
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.status-safe{
+    color:#22c55e;
+    font-weight:bold;
+}
+
+.status-phishing{
+    color:#ef4444;
+    font-weight:bold;
+}
+
+canvas{
+    background:white;
+    border-radius:10px;
+    padding:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Security Analytics Dashboard</h1>
+
+<div class="card">
+
+<button onclick="loadAnalytics()">Load Analytics</button>
+<button onclick="loadHistory()">View History</button>
+
+<a href="/export/csv">
+<button>Export CSV</button>
+</a>
+
+<a href="/export/pdf">
+<button>Export PDF</button>
+</a>
+
+<a href="/logout">
+<button>Logout</button>
+</a>
+
+</div>
+
+<div id="analytics-section" class="card" style="display:none;">
+
+<h2>Analytics Overview</h2>
+
+<div id="analytics-data"></div>
+
+<canvas id="myChart"></canvas>
+
+</div>
+
+<div id="history-section" class="card" style="display:none;">
+
+<h2>Recent Activity</h2>
+
+<div id="history-data"></div>
+
+</div>
+
+<script>
+
+let chartInstance = null;
+
+async function loadAnalytics(){
+
+    document.getElementById("analytics-section").style.display = "block";
+
+    let res = await fetch('/analytics');
+    let data = await res.json();
+
+    document.getElementById("analytics-data").innerHTML = `
+        <p><b>Total Requests:</b> ${data.total_requests}</p>
+        <p><b>Phishing Detected:</b> ${data.phishing_detected}</p>
+        <p><b>Safe URLs:</b> ${data.safe_detected}</p>
+        <p><b>Average Risk Score:</b> ${data.average_risk_score}</p>
+    `;
+
+    const ctx = document.getElementById('myChart');
+
+    if(chartInstance){
+        chartInstance.destroy();
+    }
+
+    chartInstance = new Chart(ctx, {
+
+        type: 'bar',
+
+        data: {
+            labels: ['Phishing', 'Safe'],
+            datasets: [{
+                label: 'Detection Results',
+                data: [
+                    data.phishing_detected,
+                    data.safe_detected
+                ]
+            }]
+        }
+
+    });
+}
+
+async function loadHistory(){
+
+    document.getElementById("history-section").style.display = "block";
+
+    let res = await fetch('/history');
+    let data = await res.json();
+
+    let html = "";
+
+    data.reverse().forEach(item => {
+
+        let statusClass =
+            item.final_label === "PHISHING"
+            ? "status-phishing"
+            : "status-safe";
+
+        html += `
+
+        <div class="history-item">
+
+            <p><b>URL:</b><br>${item.url}</p>
+
+            <p class="${statusClass}">
+                ${item.final_label}
+            </p>
+
+            <p><b>Risk Score:</b> ${item.risk_score}</p>
+
+            <p><b>Time:</b> ${item.timestamp}</p>
+
+        </div>
+        `;
+    });
+
+    document.getElementById("history-data").innerHTML = html;
+}
+
+</script>
+
+</body>
+</html>

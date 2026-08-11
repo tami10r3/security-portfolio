@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Phishing Detection System</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: #111827;
+            padding: 30px;
+            border-radius: 12px;
+            width: 600px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.4);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #60a5fa;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background: #1f2937;
+        }
+
+        .safe {
+            color: #22c55e;
+            font-weight: bold;
+        }
+
+        .phishing {
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .score-bar {
+            height: 10px;
+            background: #374151;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(to right, #22c55e, #facc15, #ef4444);
+            width: 0%;
+        }
+
+        ul {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+
+        .history-item,
+        .result {
+
+            background:#1f2937;
+            padding:15px;
+            border-radius:8px;
+            margin-bottom:10px;
+
+            width:100%;
+            max-width:100%;
+
+            overflow:hidden;
+
+            white-space:normal;
+
+            word-wrap:break-word;
+            overflow-wrap:anywhere;
+            word-break:break-word;
+        }
+
+        .url-text{
+            display:block;
+            width:100%;
+            overflow-wrap:anywhere;
+            word-break:break-word;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>Phishing Detection System</h2>
+
+    <input type="text" id="url" placeholder="Enter URL">
+    <button onclick="checkURL()">Analyze</button>
+
+    <div id="result" class="result" style="display:none;"></div>
+
+    <hr style="margin:20px 0;">
+
+    <button onclick="showPanel('analytics')">Load Analytics</button>
+    <button onclick="showPanel('history')">View History</button>
+
+    <div id="analytics" class="result" style="display:none;"></div>
+    <div id="history" class="result" style="display:none;"></div>
+
+</div>
+
+<script>
+async function checkURL() {
+    let url = document.getElementById("url").value;
+
+    let res = await fetch("/risk", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: "url=" + encodeURIComponent(url)
+    });
+
+    let data = await res.json();
+
+    let resultDiv = document.getElementById("result");
+    resultDiv.style.display = "block";
+
+    let statusClass = data.final_label === "PHISHING" ? "phishing" : "safe";
+
+    let reasons = `
+        <ul>
+            <li>ML Probability: ${data.ml_probability}%</li>
+            <li>IP Flag: ${data.ip_flag}</li>
+            <li>Keyword Score: ${data.keyword_score}</li>
+        </ul>
+    `;
+
+    resultDiv.innerHTML = `
+        <div>
+            <p>
+                <b>URL:</b><br>
+                <span class="url-text">${data.url}</span>
+            </p>
+            <p class="${statusClass}">Status: ${data.final_label}</p>
+            <p><b>Risk Score:</b> ${data.risk_score}/100</p>
+
+            <div class="score-bar">
+                <div class="score-fill" style="width:${data.risk_score}%"></div>
+            </div>
+
+            ${reasons}
+        </div>
+    `;
+}
+
+async function loadAnalytics() {
+
+    let res = await fetch("/analytics");
+    let data = await res.json();
+
+    const box = document.getElementById("analytics");
+    box.style.display = "block";
+
+    document.getElementById("history").style.display = "none";
+
+    box.innerHTML = `
+        <h3>System Analytics</h3>
+        <p>Total Requests: ${data.total_requests}</p>
+        <p>Phishing Detected: ${data.phishing_detected}</p>
+        <p>Safe Detected: ${data.safe_detected}</p>
+        <p>Average Risk Score: ${data.average_risk_score}</p>
+    `;
+}
+
+async function loadHistory() {
+
+    let res = await fetch("/history");
+    let data = await res.json();
+
+    const box = document.getElementById("history");
+    box.style.display = "block";
+
+    document.getElementById("analytics").style.display = "none";
+
+    let html = "<h3>Recent Activity</h3>";
+
+    data.reverse().forEach(item => {
+        html += `
+            <div style="margin-bottom:10px;">
+                <b style="word-break:break-word;">${item.url}</b><br>
+                Status: ${item.final_label} |
+                Risk: ${item.risk_score} |
+                Time: ${item.timestamp}
+            </div>
+            <hr>
+        `;
+    });
+
+    box.innerHTML = html;
+}
+
+    function showPanel(panel) {
+
+    const analytics = document.getElementById("analytics");
+    const history = document.getElementById("history");
+
+    // hide both first (single view mode)
+    analytics.style.display = "none";
+    history.style.display = "none";
+
+    if (panel === "analytics") {
+        loadAnalytics();
+    }
+
+    if (panel === "history") {
+        loadHistory();
+    }
+}
+</script>
+
+</body>
+</html>
