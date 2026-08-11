@@ -29,7 +29,7 @@
   --font-body: "IBM Plex Sans", -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", "SF Mono", monospace;
 
-  --max-width: 780px;
+  --max-width: 960px;
 }
 
 * { box-sizing: border-box; }
